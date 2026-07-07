@@ -1,0 +1,72 @@
+# Save this file as: .github/workflows/build-unsigned-ipa.yml
+#
+# What this does:
+#   - Runs on GitHub's free macOS runner (has Xcode preinstalled)
+#   - Builds your app WITHOUT code signing (CODE_SIGNING_ALLOWED=NO)
+#   - Packages the raw .app into an unsigned .ipa
+#   - Uploads it as a downloadable build artifact
+#
+# Why unsigned: signing requires your Apple ID / certificates. Rather than
+# putting Apple credentials into CI secrets, we build unsigned here and let
+# Sideloadly or AltStore do the signing step locally on your Windows/Linux
+# machine when you install it — that's the standard free-tier workflow.
+#
+# Before using:
+#   1. Replace YOUR_PROJECT.xcodeproj and YourSchemeName below with your
+#      actual project file and scheme name.
+#      (Find your scheme name in Xcode's scheme selector, or run
+#       `xcodebuild -list` from your project folder on any Mac to check.)
+#   2. Commit this file to .github/workflows/ in your repo.
+#   3. Push a commit, or trigger the workflow manually from the Actions tab.
+#   4. Once it finishes, download the "unsigned-ipa" artifact from the
+#      workflow run page.
+
+name: Build Unsigned IPA
+
+on:
+  workflow_dispatch:      # lets you trigger it manually from the Actions tab
+  push:
+    branches: [ main ]     # also runs automatically on pushes to main
+
+jobs:
+  build:
+    runs-on: macos-17.4.1
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Show available schemes (debugging aid)
+        run: xcodebuild -list -project MyTodoApp.xcodeproj
+
+      - name: Build app (unsigned, for simulator/device generic arm64)
+        run: |
+          xcodebuild -project MyTodoApp.xcodeproj \
+            -scheme TodoApp \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            build \
+            SYMROOT=build
+
+      - name: Package .app into unsigned .ipa
+        run: |
+          mkdir -p Payload
+          APP_PATH=$(find build/Release-iphoneos -maxdepth 1 -name "*.app" | head -n 1)
+          echo "Found app at: $APP_PATH"
+          cp -R "$APP_PATH" Payload/
+          zip -r unsigned.ipa Payload
+        shell: bash
+
+      - name: Upload IPA as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-ipa
+          path: unsigned.ipa
