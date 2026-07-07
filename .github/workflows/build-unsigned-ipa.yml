@@ -30,7 +30,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-17.4.1
+    runs-on: macos-latest
 
     steps:
       - name: Checkout repository
