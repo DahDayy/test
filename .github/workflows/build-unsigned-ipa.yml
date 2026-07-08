@@ -30,7 +30,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-17.4.1
+    runs-on: macos-latest
 
     steps:
       - name: Checkout repository
@@ -45,7 +45,7 @@ jobs:
       - name: Build app (unsigned, for simulator/device generic arm64)
         run: |
           xcodebuild -project MyTodoApp.xcodeproj \
-            -scheme TodoApp \
+            -scheme MyTodoApp \
             -configuration Release \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
